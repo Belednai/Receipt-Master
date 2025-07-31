@@ -75,18 +75,26 @@ export const Navigation = () => {
           </div>
 
           {/* Center Section: Company Information */}
-          {companyInfo && (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="flex items-center space-x-6">
-                <div className="text-lg font-medium text-foreground">
-                  {companyInfo.name}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {companyInfo.phone}
-                </div>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center space-y-0.5">
+              <div className="text-base font-semibold text-foreground leading-tight">
+                Belednai Technology
+              </div>
+              <div className="text-xs text-muted-foreground leading-tight">
+                0745542770
+              </div>
+              <div className="text-xs text-muted-foreground leading-tight">
+                <a 
+                  href="https://www.belednai.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:text-primary transition-colors underline decoration-dotted underline-offset-2"
+                >
+                  www.belednai.com
+                </a>
               </div>
             </div>
-          )}
+          </div>
 
                       {/* Right Section: Account Profile */}
             <div className="flex items-center space-x-4">

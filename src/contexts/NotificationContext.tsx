@@ -18,6 +18,7 @@ interface NotificationContextType {
   unreadCount: number;
   sendNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   markAsRead: (id: string) => void;
+  markAsUnread: (id: string) => void;
   markAllAsRead: () => void;
   deleteNotification: (id: string) => void;
   clearAllNotifications: () => void;
@@ -110,6 +111,12 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     );
   };
 
+  const markAsUnread = (id: string) => {
+    setNotifications(prev => 
+      prev.map(n => n.id === id ? { ...n, read: false } : n)
+    );
+  };
+
   const markAllAsRead = () => {
     setNotifications(prev => 
       prev.map(n => ({ ...n, read: true }))
@@ -129,6 +136,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     unreadCount,
     sendNotification,
     markAsRead,
+    markAsUnread,
     markAllAsRead,
     deleteNotification,
     clearAllNotifications

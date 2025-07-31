@@ -19,7 +19,10 @@ import {
   MessageSquare,
   Clock,
   Eye,
-  EyeOff
+  EyeOff,
+  Reply,
+  ExternalLink,
+  EyeIcon
 } from "lucide-react";
 import { useNotifications, type Notification } from "@/contexts/NotificationContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,10 +47,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 const Notifications = () => {
   const { user } = useAuth();
-  const { notifications, sendNotification, markAsRead, markAllAsRead, deleteNotification, clearAllNotifications } = useNotifications();
+  const { notifications, sendNotification, markAsRead, markAsUnread, markAllAsRead, deleteNotification, clearAllNotifications } = useNotifications();
   const { toast } = useToast();
   
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
@@ -58,6 +66,11 @@ const Notifications = () => {
     to: '',
     priority: 'medium' as const
   });
+
+  // State for notification actions
+  const [expandedNotifications, setExpandedNotifications] = useState<Set<string>>(new Set());
+  const [replyNotifications, setReplyNotifications] = useState<Set<string>>(new Set());
+  const [replyTexts, setReplyTexts] = useState<Record<string, string>>({});
 
   const getTypeIcon = (type: Notification['type']) => {
     switch (type) {
@@ -99,6 +112,100 @@ const Notifications = () => {
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     return `${days}d ago`;
+  };
+
+  // Handle view notification (expand/collapse)
+  const handleViewNotification = (id: string) => {
+    setExpandedNotifications(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+        // Automatically mark as read when expanding notification details
+        const notification = notifications.find(n => n.id === id);
+        if (notification && !notification.read) {
+          markAsRead(id);
+          toast({
+            title: "Marked as read",
+            description: "Notification automatically marked as read.",
+          });
+        }
+      }
+      return newSet;
+    });
+  };
+
+  // Handle mark as read/unread toggle
+  const handleToggleReadStatus = (notification: Notification) => {
+    // Only allow marking unread notifications as read
+    // Once a notification is read, it cannot be marked as unread
+    if (!notification.read) {
+      markAsRead(notification.id);
+      toast({
+        title: "Marked as read",
+        description: "Notification marked as read.",
+      });
+    }
+  };
+
+  // Handle reply to notification
+  const handleReply = (id: string) => {
+    setReplyNotifications(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+        // Clear reply text when closing
+        setReplyTexts(prev => {
+          const newTexts = { ...prev };
+          delete newTexts[id];
+          return newTexts;
+        });
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle submit reply
+  const handleSubmitReply = (notification: Notification) => {
+    const replyText = replyTexts[notification.id];
+    if (!replyText?.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a reply message.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Send a new notification as a reply
+    sendNotification({
+      title: `Reply to: ${notification.title}`,
+      message: replyText,
+      type: 'info',
+      from: user?.id || '',
+      to: notification.from,
+      priority: 'medium'
+    });
+
+    toast({
+      title: "Reply sent",
+      description: "Your reply has been sent successfully.",
+    });
+
+    // Clear reply state
+    setReplyTexts(prev => {
+      const newTexts = { ...prev };
+      delete newTexts[notification.id];
+      return newTexts;
+    });
+    setReplyNotifications(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(notification.id);
+      return newSet;
+    });
   };
 
   const handleSendNotification = () => {
@@ -189,26 +296,28 @@ const Notifications = () => {
             <Check className="h-4 w-4 mr-2" />
             Mark all as read
           </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear all
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete all your notifications.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleClearAll}>Clear all</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {user?.role !== 'cashier' && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear all
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete all your notifications.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleClearAll}>Clear all</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <Dialog open={isSendDialogOpen} onOpenChange={setIsSendDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -377,37 +486,120 @@ const Notifications = () => {
                               <span>{formatTimestamp(notification.timestamp)}</span>
                             </div>
                           </div>
+                          
+                          {/* Expanded content */}
+                          {expandedNotifications.has(notification.id) && (
+                            <div className="mt-3 p-3 bg-muted/50 rounded-md">
+                              <h5 className="font-medium text-sm mb-2">Full Notification Details</h5>
+                              <div className="space-y-2 text-sm">
+                                <div><strong>ID:</strong> {notification.id}</div>
+                                <div><strong>From:</strong> {notification.from}</div>
+                                <div><strong>To:</strong> {notification.to}</div>
+                                <div><strong>Timestamp:</strong> {notification.timestamp.toLocaleString()}</div>
+                                <div><strong>Priority:</strong> {notification.priority}</div>
+                                <div><strong>Type:</strong> {notification.type}</div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Reply section */}
+                          {replyNotifications.has(notification.id) && (
+                            <div className="mt-3 space-y-2">
+                              <Label htmlFor={`reply-${notification.id}`} className="text-sm font-medium">
+                                Reply to this notification:
+                              </Label>
+                              <Textarea
+                                id={`reply-${notification.id}`}
+                                placeholder="Type your reply..."
+                                value={replyTexts[notification.id] || ''}
+                                onChange={(e) => setReplyTexts(prev => ({
+                                  ...prev,
+                                  [notification.id]: e.target.value
+                                }))}
+                                rows={2}
+                                className="text-sm"
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSubmitReply(notification)}
+                                  className="text-xs"
+                                >
+                                  <Send className="h-3 w-3 mr-1" />
+                                  Send Reply
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleReply(notification.id)}
+                                  className="text-xs"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center justify-end sm:justify-start space-x-1 flex-shrink-0">
+                        {/* View button */}
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleMarkAsRead(notification.id)}
+                          onClick={() => handleViewNotification(notification.id)}
+                          aria-label={expandedNotifications.has(notification.id) ? "Collapse notification details" : "View notification details"}
                         >
-                          <Check className="h-4 w-4" />
+                          <ExternalLink className="h-4 w-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete notification?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteNotification(notification.id)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        
+                        {/* Mark as Read/Unread toggle */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleReadStatus(notification)}
+                          aria-label={notification.read ? "Mark as unread" : "Mark as read"}
+                        >
+                          {notification.read ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </Button>
+                        
+                        {/* Reply button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReply(notification.id)}
+                          aria-label="Reply to notification"
+                        >
+                          <Reply className="h-4 w-4" />
+                        </Button>
+                        
+                        {/* Delete button */}
+                        {user?.role !== 'cashier' && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete notification?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteNotification(notification.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -452,30 +644,120 @@ const Notifications = () => {
                               <span>{formatTimestamp(notification.timestamp)}</span>
                             </div>
                           </div>
+                          
+                          {/* Expanded content */}
+                          {expandedNotifications.has(notification.id) && (
+                            <div className="mt-3 p-3 bg-muted/50 rounded-md">
+                              <h5 className="font-medium text-sm mb-2">Full Notification Details</h5>
+                              <div className="space-y-2 text-sm">
+                                <div><strong>ID:</strong> {notification.id}</div>
+                                <div><strong>From:</strong> {notification.from}</div>
+                                <div><strong>To:</strong> {notification.to}</div>
+                                <div><strong>Timestamp:</strong> {notification.timestamp.toLocaleString()}</div>
+                                <div><strong>Priority:</strong> {notification.priority}</div>
+                                <div><strong>Type:</strong> {notification.type}</div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Reply section */}
+                          {replyNotifications.has(notification.id) && (
+                            <div className="mt-3 space-y-2">
+                              <Label htmlFor={`reply-${notification.id}`} className="text-sm font-medium">
+                                Reply to this notification:
+                              </Label>
+                              <Textarea
+                                id={`reply-${notification.id}`}
+                                placeholder="Type your reply..."
+                                value={replyTexts[notification.id] || ''}
+                                onChange={(e) => setReplyTexts(prev => ({
+                                  ...prev,
+                                  [notification.id]: e.target.value
+                                }))}
+                                rows={2}
+                                className="text-sm"
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleSubmitReply(notification)}
+                                  className="text-xs"
+                                >
+                                  <Send className="h-3 w-3 mr-1" />
+                                  Send Reply
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleReply(notification.id)}
+                                  className="text-xs"
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center justify-end sm:justify-start space-x-1 flex-shrink-0">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete notification?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDeleteNotification(notification.id)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        {/* View button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewNotification(notification.id)}
+                          aria-label={expandedNotifications.has(notification.id) ? "Collapse notification details" : "View notification details"}
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                        
+                        {/* Mark as Read/Unread toggle */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleToggleReadStatus(notification)}
+                          aria-label={notification.read ? "Mark as unread" : "Mark as read"}
+                        >
+                          {notification.read ? (
+                            <EyeOff className="h-4 w-4" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </Button>
+                        
+                        {/* Reply button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleReply(notification.id)}
+                          aria-label="Reply to notification"
+                        >
+                          <Reply className="h-4 w-4" />
+                        </Button>
+                        
+                        {/* Delete button */}
+                        {user?.role !== 'cashier' && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete notification?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteNotification(notification.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </div>
                   </CardContent>
