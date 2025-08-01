@@ -149,7 +149,7 @@ const UserManagementSettings = () => {
         </div>
         <Button>
           <UserPlus className="h-4 w-4 mr-2" />
-          Add User
+          Create Cashier
         </Button>
       </div>
 

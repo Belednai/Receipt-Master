@@ -155,12 +155,15 @@ export const saveCompanySettings = async (settings: Omit<CompanySettings, 'updat
   }
 };
 
+
+
 export const getCompanySettings = async (): Promise<CompanySettings | null> => {
   try {
     const settingsQuery = query(collection(db, COMPANY_SETTINGS_COLLECTION));
     const querySnapshot = await getDocs(settingsQuery);
     
     if (querySnapshot.empty) {
+      // Return null if no settings exist - let the user configure them
       return null;
     }
     
@@ -168,18 +171,18 @@ export const getCompanySettings = async (): Promise<CompanySettings | null> => {
     const data = doc.data();
     
     return {
-      name: data.name,
-      address: data.address,
-      phone: data.phone,
-      email: data.email,
+      name: data.name || "",
+      address: data.address || "",
+      phone: data.phone || "",
+      email: data.email || "",
       footer: data.footer || "",
       logo: data.logo || "",
       updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-      updatedBy: data.updatedBy,
+      updatedBy: data.updatedBy || 'system',
     };
   } catch (error) {
     console.error("Error getting company settings:", error);
-    throw new Error("Failed to load company settings");
+    return null;
   }
 };
 

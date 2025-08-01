@@ -14,9 +14,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { UserPlus, Loader2 } from 'lucide-react';
+import { UserPlus, Loader2, Shield } from 'lucide-react';
 
-const addUserSchema = z.object({
+const createCashierSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
   role: z.enum(['admin', 'cashier'] as const),
@@ -27,15 +27,15 @@ const addUserSchema = z.object({
   path: ["confirmPassword"],
 });
 
-type AddUserFormData = z.infer<typeof addUserSchema>;
+type CreateCashierFormData = z.infer<typeof createCashierSchema>;
 
-interface AddUserModalProps {
+interface CreateCashierModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (user: Omit<{ id: string; name: string; email: string; role: 'admin' | 'cashier'; status: 'active' | 'inactive'; createdAt: string }, 'id' | 'createdAt'>) => void;
+  onSubmit: (user: Omit<{ id: string; name: string; email: string; role: 'admin' | 'cashier'; createdAt: string }, 'id' | 'createdAt'>) => void;
 }
 
-const AddUserModal = ({ open, onOpenChange, onSubmit }: AddUserModalProps) => {
+const CreateCashierModal = ({ open, onOpenChange, onSubmit }: CreateCashierModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -45,8 +45,8 @@ const AddUserModal = ({ open, onOpenChange, onSubmit }: AddUserModalProps) => {
     watch,
     reset,
     formState: { errors }
-  } = useForm<AddUserFormData>({
-    resolver: zodResolver(addUserSchema),
+  } = useForm<CreateCashierFormData>({
+    resolver: zodResolver(createCashierSchema),
     defaultValues: {
       role: 'cashier'
     }
@@ -54,7 +54,7 @@ const AddUserModal = ({ open, onOpenChange, onSubmit }: AddUserModalProps) => {
 
   const selectedRole = watch('role');
 
-  const handleFormSubmit = async (data: AddUserFormData) => {
+  const handleCreateCashierSubmit = async (data: CreateCashierFormData) => {
     setIsLoading(true);
     
     try {
@@ -64,13 +64,12 @@ const AddUserModal = ({ open, onOpenChange, onSubmit }: AddUserModalProps) => {
       onSubmit({
         name: data.name,
         email: data.email,
-        role: data.role,
-        status: 'active' as const
+        role: data.role
       });
       
       reset();
     } catch (error) {
-      console.error('Error creating user:', error);
+      console.error('Error creating cashier:', error);
     } finally {
       setIsLoading(false);
     }
@@ -86,15 +85,15 @@ const AddUserModal = ({ open, onOpenChange, onSubmit }: AddUserModalProps) => {
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5" />
-            Add New User
+            <Shield className="h-5 w-5" />
+            Create Cashier Account
           </DialogTitle>
           <DialogDescription>
-            Create a new user account with appropriate permissions.
+            Create a new cashier account with appropriate permissions.
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+        <form onSubmit={handleSubmit(handleCreateCashierSubmit)} className="space-y-4">
           {/* Name Field */}
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
@@ -213,8 +212,8 @@ const AddUserModal = ({ open, onOpenChange, onSubmit }: AddUserModalProps) => {
                 </>
               ) : (
                 <>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Create User
+                  <Shield className="mr-2 h-4 w-4" />
+                  Create Cashier
                 </>
               )}
             </Button>
@@ -225,4 +224,4 @@ const AddUserModal = ({ open, onOpenChange, onSubmit }: AddUserModalProps) => {
   );
 };
 
-export default AddUserModal; 
+export default CreateCashierModal; 

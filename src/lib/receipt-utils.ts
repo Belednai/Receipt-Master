@@ -28,6 +28,8 @@ export interface ReceiptData {
   total: number;
   createdAt: string;
   createdBy: string; // User ID of the creator
+  createdByName: string; // Full name of the cashier who created it
+  timestamp: string; // Exact date and time of creation with timezone
 }
 
 export const generateReceiptPDF = async (receiptData: ReceiptData): Promise<Blob> => {
@@ -66,6 +68,8 @@ export const generateReceiptPDF = async (receiptData: ReceiptData): Promise<Blob
         <div style="text-align: right;">
           <p style="color: #6b7280; margin: 5px 0; font-size: 14px;"><strong>Receipt ID:</strong> ${receiptData.id}</p>
           <p style="color: #6b7280; margin: 5px 0; font-size: 14px;"><strong>Date:</strong> ${receiptData.createdAt}</p>
+          <p style="color: #6b7280; margin: 5px 0; font-size: 14px;"><strong>Created By:</strong> ${receiptData.createdByName}</p>
+          <p style="color: #6b7280; margin: 5px 0; font-size: 14px;"><strong>Time:</strong> ${receiptData.timestamp}</p>
         </div>
       </div>
 
@@ -193,7 +197,7 @@ export const sendEmailWithReceipt = async (receiptData: ReceiptData): Promise<vo
     const url = URL.createObjectURL(pdfBlob);
     
     // Create mailto link with attachment (note: this is a simplified approach)
-    const subject = encodeURIComponent('Your Receipt from Belednai Technology');
+    const subject = encodeURIComponent(`Your Receipt from ${receiptData.companyInfo.name}`);
     const body = encodeURIComponent(`Dear ${receiptData.customerInfo.name},\n\nPlease find your receipt attached.\n\nThank you for your business!\n\nBest regards,\n${receiptData.companyInfo.name}`);
     
     // Note: Most email clients don't support attachments via mailto

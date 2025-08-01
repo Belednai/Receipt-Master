@@ -48,6 +48,18 @@ const CompanySettings = () => {
       const savedSettings = await getCompanySettings();
       if (savedSettings) {
         setSettings(savedSettings);
+      } else {
+        // If no settings exist, keep the empty form for user to fill
+        setSettings({
+          name: "",
+          address: "",
+          phone: "",
+          email: "",
+          footer: "",
+          logo: "",
+          updatedAt: "",
+          updatedBy: ""
+        });
       }
     } catch (error) {
       toast({
@@ -144,7 +156,7 @@ const CompanySettings = () => {
                       id="company-name"
                       value={settings.name}
                       onChange={(e) => handleInputChange('name', e.target.value)}
-                      placeholder="e.g., Belednai Technology"
+                      placeholder="e.g., Your Company Name"
                       required
                     />
                   </div>

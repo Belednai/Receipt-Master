@@ -1,21 +1,23 @@
-import { useState, useEffect } from 'react';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { 
-  Users, 
   Plus, 
-  Search,
+  Search, 
+  Shield, 
+  User, 
+  Edit3, 
+  RotateCcw,
+  Eye,
+  EyeOff,
   MoreHorizontal,
-  Edit,
-  Trash2,
-  Key,
-  UserPlus
-} from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/AuthContext";
-import { Input } from "@/components/ui/input";
-import { Link } from "react-router-dom";
+  Calendar,
+  Mail,
+  Hash,
+  Trash2
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,341 +25,336 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import AddUserModal from "@/components/AddUserModal";
-import ResetPasswordModal from "@/components/ResetPasswordModal";
-
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: 'admin' | 'cashier';
-  status: 'active' | 'inactive';
-  createdAt: string;
-}
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { CreateCashierModal } from '@/components/CreateCashierModal';
+import { useAuth, User as AuthUser } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const UserManagement = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const [isCreateCashierModalOpen, setIsCreateCashierModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showResetModal, setShowResetModal] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [users, setUsers] = useState<AuthUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { user, getAllCashiers, deleteCashierAccount } = useAuth();
+  const { toast } = useToast();
 
-  // Initial users data
-  const initialUsers: User[] = [
-    {
-      id: '1',
-      name: 'John Admin',
-      email: 'john.admin@receiptmaster.com',
-      role: 'admin',
-      status: 'active',
-      createdAt: '2024-01-01'
-    },
-    {
-      id: '2',
-      name: 'Sarah Cashier',
-      email: 'sarah.cashier@receiptmaster.com',
-      role: 'cashier',
-      status: 'active',
-      createdAt: '2024-01-05'
-    },
-    {
-      id: '3',
-      name: 'Mike Manager',
-      email: 'mike.manager@receiptmaster.com',
-      role: 'admin',
-      status: 'active',
-      createdAt: '2024-01-10'
-    },
-    {
-      id: '4',
-      name: 'Lisa Cashier',
-      email: 'lisa.cashier@receiptmaster.com',
-      role: 'cashier',
-      status: 'inactive',
-      createdAt: '2024-01-15'
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const cashierList = await getAllCashiers();
+      
+      // Add the current admin user to the list
+      const allUsers = user ? [user, ...cashierList] : cashierList;
+      setUsers(allUsers);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load user accounts.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
     }
-  ];
-
-  // Load users from localStorage or use initial data
-  const [users, setUsers] = useState<User[]>([]);
+  };
 
   useEffect(() => {
-    const savedUsers = localStorage.getItem('users');
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers));
-    } else {
-      // Initialize with default users if no data exists
-      setUsers(initialUsers);
-      localStorage.setItem('users', JSON.stringify(initialUsers));
-    }
+    fetchUsers();
   }, []);
 
   const filteredUsers = users.filter(user =>
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
+    (user.idNumber && user.idNumber.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleDeleteUser = (user: User) => {
-    setUserToDelete(user);
-    setShowDeleteDialog(true);
+  const handleCreateCashier = () => {
+    setIsCreateCashierModalOpen(true);
   };
 
-  const confirmDeleteUser = () => {
-    if (userToDelete) {
-      const updatedUsers = users.filter(u => u.id !== userToDelete.id);
-      setUsers(updatedUsers);
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
+  const handleCashierCreated = () => {
+    fetchUsers(); // Refresh the list
+  };
+
+  const handleDeleteCashier = async (cashierId: string, cashierName: string) => {
+    if (!confirm(`Are you sure you want to delete cashier "${cashierName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteCashierAccount(cashierId);
+      
       toast({
-        title: "User deleted",
-        description: `${userToDelete.name} has been removed from the system.`,
+        title: 'Cashier deleted',
+        description: `Cashier "${cashierName}" has been successfully deleted.`,
       });
-      setUserToDelete(null);
-      setShowDeleteDialog(false);
+      
+      fetchUsers(); // Refresh the list
+    } catch (error) {
+      console.error('Error deleting cashier:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to delete cashier account.',
+        variant: 'destructive',
+      });
     }
   };
 
-  const handleResetPassword = (user: User) => {
-    setSelectedUser(user);
-    setShowResetModal(true);
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'Never';
+    
+    try {
+      // Handle Firestore timestamp
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+      return new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(date);
+    } catch (error) {
+      return 'Invalid date';
+    }
   };
 
-  const handleAddUser = (newUser: Omit<User, 'id' | 'createdAt'>) => {
-    const user: User = {
-      ...newUser,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-    setUsers([...users, user]);
-    setShowAddModal(false);
-    toast({
-      title: "User created",
-      description: `${user.name} has been added to the system.`,
-    });
-  };
-
-  const getStatusColor = (status: string) => {
-    return status === 'active' ? 'bg-success/20 text-success' : 'bg-muted text-muted-foreground';
-  };
-
-  const getRoleColor = (role: string) => {
-    return role === 'admin' ? 'bg-primary/20 text-primary' : 'bg-secondary text-secondary-foreground';
-  };
+  // Only admins can access this page
+  if (user?.role !== 'admin') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <Shield className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Access Denied</h3>
+              <p className="text-muted-foreground">
+                Only administrators can access user management.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-          <div className="animate-fade-in">
-            <h1 className="text-3xl font-bold text-foreground">User Management</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage system users and their permissions
-            </p>
-          </div>
-          <div className="mt-4 sm:mt-0 animate-slide-up">
-            <Button asChild>
-              <Link to="/admin-dashboard/users/create">
-                <UserPlus className="w-4 h-4 mr-2" />
-                Add User
-              </Link>
-            </Button>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-foreground">User Management</h1>
+          <p className="text-muted-foreground mt-1">
+            Manage cashier accounts and their permissions
+          </p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Card className="animate-slide-up">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Users className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Total Users</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Shield className="h-6 w-6 text-primary" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Admin</p>
+                  <p className="text-2xl font-bold">1</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-secondary/10 rounded-lg">
+                  <User className="h-6 w-6 text-secondary-foreground" />
+                </div>
+                <div className="ml-4">
+                                  <p className="text-sm font-medium text-muted-foreground">Users</p>
+                <p className="text-2xl font-bold">{users.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Calendar className="h-6 w-6 text-green-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-muted-foreground">Active Today</p>
                   <p className="text-2xl font-bold">{users.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card className="animate-slide-up">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Users className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Active Users</p>
-                  <p className="text-2xl font-bold">{users.filter(u => u.status === 'active').length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="animate-slide-up">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Users className="h-5 w-5 text-secondary" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Admins</p>
-                  <p className="text-2xl font-bold">{users.filter(u => u.role === 'admin').length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="animate-slide-up">
-            <CardContent className="p-6">
-              <div className="flex items-center space-x-2">
-                <Users className="h-5 w-5 text-accent" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Cashiers</p>
-                  <p className="text-2xl font-bold">{users.filter(u => u.role === 'cashier').length}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
-        {/* Users Table */}
-        <Card className="animate-slide-up">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-              <div>
-                <CardTitle>System Users</CardTitle>
-                <CardDescription>
-                  Manage user accounts and permissions
-                </CardDescription>
-              </div>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search users..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 w-full sm:w-64"
-                />
-              </div>
+        {/* Actions and Search */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                             <Input
+                 placeholder="Search users by name or ID number..."
+                 value={searchTerm}
+                 onChange={(e) => setSearchTerm(e.target.value)}
+                 className="pl-9"
+               />
             </div>
-          </CardHeader>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+                              onClick={fetchUsers}
+              disabled={isLoading}
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Refresh
+            </Button>
+            <Button onClick={handleCreateCashier}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Cashier
+            </Button>
+          </div>
+        </div>
+
+                 {/* Users Table */}
+         <Card>
+           <CardHeader>
+             <CardTitle>User Accounts</CardTitle>
+             <CardDescription>
+               Manage admin and cashier accounts
+             </CardDescription>
+           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Name</th>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Email</th>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Role</th>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Status</th>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Created</th>
-                    <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredUsers.map((user) => (
-                    <tr 
-                      key={user.id} 
-                      className="border-b border-border hover:bg-muted/30 transition-colors duration-200"
-                    >
-                      <td className="py-3 px-6">
-                        <div className="flex items-center space-x-3">
-                          <div className="h-8 w-8 bg-primary/10 rounded-full flex items-center justify-center">
-                            <span className="text-sm font-medium text-primary">
-                              {user.name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <span className="font-medium text-foreground">{user.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-6 text-sm text-muted-foreground">{user.email}</td>
-                      <td className="py-3 px-6">
-                        <Badge className={getRoleColor(user.role)}>
-                          {user.role}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-6">
-                        <Badge className={getStatusColor(user.status)}>
-                          {user.status}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-6 text-sm text-muted-foreground">{user.createdAt}</td>
-                      <td className="py-3 px-6">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleResetPassword(user)}>
-                              <Key className="mr-2 h-4 w-4" />
-                              Reset Password
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit User
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleDeleteUser(user)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete User
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="flex items-center space-x-4">
+                    <Skeleton className="h-12 w-12 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-[250px]" />
+                      <Skeleton className="h-4 w-[200px]" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+                         ) : filteredUsers.length === 0 ? (
+               <div className="text-center py-8">
+                 <User className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                 <h3 className="text-lg font-semibold mb-2">No users found</h3>
+                 <p className="text-muted-foreground mb-4">
+                   {searchTerm ? 'Try adjusting your search terms.' : 'Get started by creating your first cashier account.'}
+                 </p>
+                 {!searchTerm && (
+                   <Button onClick={handleCreateCashier}>
+                     <Plus className="w-4 h-4 mr-2" />
+                     Create First Cashier
+                   </Button>
+                 )}
+               </div>
+             ) : (
+               <Table>
+                 <TableHeader>
+                   <TableRow>
+                     <TableHead>Name</TableHead>
+                     <TableHead>Email/ID Number</TableHead>
+                     <TableHead>Role</TableHead>
+                     <TableHead>Created At</TableHead>
+                     <TableHead>Last Updated</TableHead>
+                     <TableHead className="text-right">Actions</TableHead>
+                   </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                                      {filteredUsers.map((user) => (
+                     <TableRow key={user.id}>
+                       <TableCell className="font-medium">
+                         <div className="flex items-center">
+                           <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center mr-3">
+                             {user.role === 'admin' ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                           </div>
+                           {user.name}
+                         </div>
+                       </TableCell>
+                       <TableCell>
+                         <div className="flex items-center">
+                           {user.role === 'cashier' ? (
+                             <>
+                               <Hash className="w-4 h-4 mr-2 text-muted-foreground" />
+                               {user.idNumber || 'N/A'}
+                             </>
+                           ) : (
+                             <>
+                               <Mail className="w-4 h-4 mr-2 text-muted-foreground" />
+                               {user.email}
+                             </>
+                           )}
+                         </div>
+                       </TableCell>
+                       <TableCell>
+                         <Badge 
+                           variant={user.role === 'admin' ? 'default' : 'secondary'}
+                           className="capitalize"
+                         >
+                           {user.role}
+                         </Badge>
+                       </TableCell>
+                       <TableCell className="text-muted-foreground">
+                         {formatDate(user.createdAt)}
+                       </TableCell>
+                       <TableCell className="text-muted-foreground">
+                         {formatDate(user.updatedAt)}
+                       </TableCell>
+                       <TableCell className="text-right">
+                         {user.role === 'cashier' && (
+                           <DropdownMenu>
+                             <DropdownMenuTrigger asChild>
+                               <Button variant="ghost" className="h-8 w-8 p-0">
+                                 <span className="sr-only">Open menu</span>
+                                 <MoreHorizontal className="h-4 w-4" />
+                               </Button>
+                             </DropdownMenuTrigger>
+                             <DropdownMenuContent align="end">
+                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                               <DropdownMenuSeparator />
+                               <DropdownMenuItem 
+                                 onClick={() => handleDeleteCashier(user.id, user.name)}
+                                 className="text-destructive focus:text-destructive"
+                               >
+                                 <Trash2 className="w-4 h-4 mr-2" />
+                                 Delete Cashier
+                               </DropdownMenuItem>
+                             </DropdownMenuContent>
+                           </DropdownMenu>
+                         )}
+                       </TableCell>
+                     </TableRow>
+                   ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Add User Modal */}
-      <AddUserModal 
-        open={showAddModal} 
-        onOpenChange={setShowAddModal}
-        onSubmit={handleAddUser}
+      {/* Create Cashier Modal */}
+      <CreateCashierModal 
+        isOpen={isCreateCashierModalOpen}
+        onClose={() => setIsCreateCashierModalOpen(false)}
+        onSuccess={handleCashierCreated}
       />
-
-      {/* Reset Password Modal */}
-      <ResetPasswordModal
-        open={showResetModal}
-        onOpenChange={setShowResetModal}
-        user={selectedUser}
-      />
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete {userToDelete?.name}? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteUser} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };

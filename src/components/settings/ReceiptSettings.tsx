@@ -23,11 +23,11 @@ const ReceiptSettings = () => {
   const { toast } = useToast();
   const [receiptConfig, setReceiptConfig] = useState({
     // Header Settings
-    businessName: "Belednai Technology",
-    businessAddress: "123 Business Street, Tech City, TC 12345",
-    businessPhone: "+1 (555) 123-4567",
-    businessEmail: "contact@belednai.com",
-    businessWebsite: "www.belednai.com",
+    businessName: "",
+    businessAddress: "",
+    businessPhone: "",
+    businessEmail: "",
+    businessWebsite: "",
     
     // Receipt Format
     receiptNumberFormat: "REC-{YYYY}-{0000}",

@@ -22,6 +22,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCompanySettings } from "@/lib/product-utils";
+import { ChangePasswordModal } from "@/components/ChangePasswordModal";
 
 const Profile = () => {
   const { toast } = useToast();
@@ -102,37 +103,10 @@ const Profile = () => {
     });
   };
 
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+
   const handleChangePassword = () => {
-    if (profileData.newPassword !== profileData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "New passwords do not match.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (profileData.newPassword.length < 8) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 8 characters long.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // In a real application, this would make an API call to change the password
-    toast({
-      title: "Password updated",
-      description: "Your password has been changed successfully.",
-    });
-
-    setProfileData({
-      ...profileData,
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
-    });
+    setIsChangePasswordModalOpen(true);
   };
 
   const handleSavePreferences = () => {
@@ -305,96 +279,53 @@ const Profile = () => {
             </CardContent>
           </Card>
 
-          {/* Change Password */}
+          {/* Security & Password */}
           <Card>
             <CardHeader>
-              <CardTitle>Change Password</CardTitle>
+              <CardTitle>Security</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <div className="relative">
-                  <Input
-                    id="currentPassword"
-                    type={showCurrentPassword ? "text" : "password"}
-                    value={profileData.currentPassword}
-                    onChange={(e) => setProfileData({...profileData, currentPassword: e.target.value})}
-                    placeholder="Enter current password"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  >
-                    {showCurrentPassword ? (
-                      <EyeOff className="h-4 w-4" />
-                    ) : (
-                      <Eye className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="newPassword">New Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="newPassword"
-                      type={showNewPassword ? "text" : "password"}
-                      value={profileData.newPassword}
-                      onChange={(e) => setProfileData({...profileData, newPassword: e.target.value})}
-                      placeholder="Enter new password"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowNewPassword(!showNewPassword)}
-                    >
-                      {showNewPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
+                  <Label className="text-sm font-medium text-muted-foreground">Authentication Method</Label>
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      {user?.isGoogleUser ? 'Google OAuth 2.0' : 'Email and Password'}
+                    </span>
                   </div>
                 </div>
-
+                
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirmPassword"
-                      type={showConfirmPassword ? "text" : "password"}
-                      value={profileData.confirmPassword}
-                      onChange={(e) => setProfileData({...profileData, confirmPassword: e.target.value})}
-                      placeholder="Confirm new password"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
+                  <Label className="text-sm font-medium text-muted-foreground">Account Created</Label>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">
+                      {user?.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : 'Unknown'}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              <Button onClick={handleChangePassword}>
-                <Save className="h-4 w-4 mr-2" />
-                Change Password
-              </Button>
+              {!user?.isGoogleUser && (
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="font-medium">Password</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Change your password to keep your account secure
+                      </p>
+                    </div>
+                    <Button 
+                      variant="outline"
+                      onClick={handleChangePassword}
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Change Password
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -574,6 +505,12 @@ const Profile = () => {
           </Card>
         </div>
       </div>
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal 
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
+      />
     </div>
   );
 };

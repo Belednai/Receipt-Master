@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ import {
   saveReceiptToDatabase,
   type ReceiptData 
 } from "@/lib/receipt-utils";
+import { getCompanySettings } from "@/lib/product-utils";
 
 interface ReceiptItem {
   id: string;
@@ -44,10 +45,10 @@ const CreateReceipt = () => {
   const [savedReceiptId, setSavedReceiptId] = useState<string | null>(null);
 
   const [companyInfo, setCompanyInfo] = useState({
-    name: "Belednai Technology",
-    address: "123 Business Street, Tech City, TC 12345",
-    phone: "(555) 123-4567",
-    email: "contact@belednai.com"
+    name: "",
+    address: "",
+    phone: "",
+    email: ""
   });
 
   const [customerInfo, setCustomerInfo] = useState({
@@ -62,6 +63,32 @@ const CreateReceipt = () => {
   ]);
 
   const [notes, setNotes] = useState("");
+
+  // Load company settings on component mount
+  useEffect(() => {
+    const loadCompanySettings = async () => {
+      try {
+        const settings = await getCompanySettings();
+        if (settings) {
+          setCompanyInfo({
+            name: settings.name,
+            address: settings.address,
+            phone: settings.phone,
+            email: settings.email
+          });
+        }
+      } catch (error) {
+        console.error('Error loading company settings:', error);
+        toast({
+          title: "Warning",
+          description: "Could not load company settings. Please configure them in Settings.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    loadCompanySettings();
+  }, []);
 
   const addItem = () => {
     const newItem: ReceiptItem = {
@@ -105,6 +132,7 @@ const CreateReceipt = () => {
   };
 
   const prepareReceiptData = (): ReceiptData => {
+    const now = new Date();
     return {
       id: savedReceiptId || generateReceiptId(),
       companyInfo,
@@ -114,8 +142,18 @@ const CreateReceipt = () => {
       subtotal,
       totalTax,
       total,
-      createdAt: new Date().toISOString().split('T')[0],
-      createdBy: user?.id || 'unknown'
+      createdAt: now.toISOString().split('T')[0],
+      createdBy: user?.id || 'unknown',
+      createdByName: user?.name || 'Unknown User',
+      timestamp: now.toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+      })
     };
   };
 

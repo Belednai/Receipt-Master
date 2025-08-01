@@ -23,16 +23,14 @@ import { useToast } from "@/hooks/use-toast";
 
 interface CreateUserForm {
   name: string;
-  email: string;
+  idNumber: string;
   password: string;
   confirmPassword: string;
-  role: 'admin' | 'cashier';
-  status: 'active' | 'inactive';
 }
 
 const CreateUser = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, createCashierAccount } = useAuth();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -40,11 +38,9 @@ const CreateUser = () => {
 
   const [formData, setFormData] = useState<CreateUserForm>({
     name: "",
-    email: "",
+    idNumber: "",
     password: "",
-    confirmPassword: "",
-    role: "cashier",
-    status: "active"
+    confirmPassword: ""
   });
 
   const [errors, setErrors] = useState<Partial<CreateUserForm>>({});
@@ -59,12 +55,13 @@ const CreateUser = () => {
       newErrors.name = "Name must be at least 2 characters";
     }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
-    } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+    // ID Number validation
+    if (!formData.idNumber.trim()) {
+      newErrors.idNumber = "ID number is required";
+    } else if (formData.idNumber.trim().length < 3) {
+      newErrors.idNumber = "ID number must be at least 3 characters";
+    } else if (!/^[A-Za-z0-9]+-[0-9]+$/.test(formData.idNumber)) {
+      newErrors.idNumber = "ID number must be in format: LETTERS/NUMBERS-NUMBERS (e.g., 'SSD-001', 'BSC-002')";
     }
 
     // Password validation
@@ -97,35 +94,24 @@ const CreateUser = () => {
     setIsSubmitting(true);
 
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Create new user object
-      const newUser = {
-        id: Date.now().toString(),
+      // Use the auth service to create cashier account
+      await createCashierAccount({
         name: formData.name.trim(),
-        email: formData.email.trim().toLowerCase(),
-        role: formData.role,
-        status: formData.status,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-
-      // Save to localStorage to persist the data
-      const existingUsers = JSON.parse(localStorage.getItem('users') || '[]');
-      const updatedUsers = [...existingUsers, newUser];
-      localStorage.setItem('users', JSON.stringify(updatedUsers));
+        idNumber: formData.idNumber.trim(),
+        password: formData.password
+      });
       
       toast({
-        title: "User created successfully",
-        description: `${newUser.name} has been added to the system.`,
+        title: "Cashier account created successfully",
+        description: `Cashier ${formData.name} has been created with ID number: ${formData.idNumber}. You have been signed out as the admin. Please sign in again to continue managing cashiers.`,
       });
 
       // Navigate back to user management
       navigate("/admin-dashboard/users");
     } catch (error) {
       toast({
-        title: "Error creating user",
-        description: "There was an error creating the user. Please try again.",
+        title: "Error creating cashier account",
+        description: error instanceof Error ? error.message : "There was an error creating the cashier account. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -158,11 +144,11 @@ const CreateUser = () => {
             </Button>
             <div className="flex items-center gap-3">
               <UserPlus className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold text-foreground">Create New User</h1>
+              <h1 className="text-3xl font-bold text-foreground">Create Cashier</h1>
             </div>
           </div>
           <p className="text-muted-foreground">
-            Add a new user to the system. All fields marked with * are required.
+            Create a new cashier account. Cashiers will sign in using their ID number and password.
           </p>
         </div>
 
@@ -198,20 +184,23 @@ const CreateUser = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email">
-                      Email Address *
+                    <Label htmlFor="idNumber">
+                      ID Number *
                     </Label>
                     <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => handleInputChange("email", e.target.value)}
-                      placeholder="Enter email address"
-                      className={errors.email ? "border-destructive" : ""}
+                      id="idNumber"
+                      type="text"
+                      value={formData.idNumber}
+                      onChange={(e) => handleInputChange("idNumber", e.target.value)}
+                      placeholder="Enter ID number (e.g., SSD-001, BSC-002)"
+                      className={errors.idNumber ? "border-destructive" : ""}
                     />
-                    {errors.email && (
-                      <p className="text-sm text-destructive">{errors.email}</p>
+                    {errors.idNumber && (
+                      <p className="text-sm text-destructive">{errors.idNumber}</p>
                     )}
+                    <p className="text-xs text-muted-foreground">
+                      Format: LETTERS/NUMBERS-NUMBERS (e.g., "SSD-001", "BSC-002"). Cashiers will use this ID number to sign in.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -294,78 +283,7 @@ const CreateUser = () => {
 
               <Separator />
 
-              {/* Role and Status */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Role & Status</h3>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="role">
-                      User Role *
-                    </Label>
-                    <Select
-                      value={formData.role}
-                      onValueChange={(value: 'admin' | 'cashier') => 
-                        handleInputChange("role", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cashier">
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            Cashier
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="admin">
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-4 w-4" />
-                            Administrator
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Cashiers can create receipts and view their own data. Admins have full access.
-                    </p>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="status">
-                      Account Status *
-                    </Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value: 'active' | 'inactive') => 
-                        handleInputChange("status", value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="default" className="h-4 w-4 rounded-full" />
-                            Active
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="inactive">
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="h-4 w-4 rounded-full" />
-                            Inactive
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Active users can log in and use the system.
-                    </p>
-                  </div>
-                </div>
-              </div>
 
               <Separator />
 
@@ -387,12 +305,12 @@ const CreateUser = () => {
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                      Creating User...
+                      Creating Cashier...
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      Create User
+                      Create Cashier
                     </>
                   )}
                 </Button>

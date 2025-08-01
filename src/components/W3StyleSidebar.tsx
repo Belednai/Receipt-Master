@@ -76,7 +76,7 @@ const getMenuGroups = (userRole?: string): MenuGroup[] => {
       icon: Users,
       items: [
         { name: "All Users", href: "/admin-dashboard/users", icon: Users },
-        { name: "Add User", href: "/admin-dashboard/users/create", icon: UserPlus },
+        { name: "Create Cashier", href: "/admin-dashboard/users/create", icon: UserPlus },
       ]
     });
 
@@ -123,7 +123,7 @@ export const W3StyleSidebar = () => {
   };
 
   return (
-    <div className="w-64 bg-gray-50 border-r border-gray-200 h-full flex flex-col">
+    <div className="w-64 bg-card border-r border-border h-full flex flex-col">
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
         {/* Dashboard Item */}
@@ -132,12 +132,12 @@ export const W3StyleSidebar = () => {
             to="/"
             className={({ isActive }) =>
               cn(
-                "flex items-center px-3 py-2.5 text-base font-semibold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200",
-                isActive && "bg-blue-50 text-blue-700 font-medium"
+                "flex items-center px-3 py-3 text-base font-semibold text-foreground hover:text-primary hover:bg-accent rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                isActive && "bg-primary/10 text-primary font-medium"
               )
             }
           >
-            <LayoutDashboard className="w-4 h-4 mr-3" />
+            <LayoutDashboard className="w-5 h-5 mr-3" />
             Dashboard
           </NavLink>
         </div>
@@ -148,15 +148,15 @@ export const W3StyleSidebar = () => {
             to="/notifications"
             className={({ isActive }) =>
               cn(
-                "flex items-center px-3 py-2.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200 relative",
-                isActive && "bg-blue-50 text-blue-700 font-medium"
+                "flex items-center px-3 py-3 text-sm text-foreground hover:text-primary hover:bg-accent rounded-md transition-colors duration-200 relative focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                isActive && "bg-primary/10 text-primary font-medium"
               )
             }
           >
-            <Bell className="w-4 h-4 mr-3" />
+            <Bell className="w-5 h-5 mr-3" />
             Notifications
             {unreadCount > 0 && (
-              <span className="ml-auto bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              <span className="ml-auto bg-destructive text-destructive-foreground text-xs rounded-full h-6 w-6 flex items-center justify-center font-medium">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -172,29 +172,33 @@ export const W3StyleSidebar = () => {
               onOpenChange={() => toggleGroup(group.title)}
             >
               <CollapsibleTrigger asChild>
-                <button className="w-full flex items-center justify-between p-2.5 text-left text-gray-700 hover:bg-gray-100 rounded-md transition-colors duration-200 group mb-1">
+                <button 
+                  className="w-full flex items-center justify-between p-3 text-left text-foreground hover:text-primary hover:bg-accent rounded-md transition-colors duration-200 group mb-1 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                  aria-expanded={openGroups.has(group.title)}
+                  aria-label={`${openGroups.has(group.title) ? 'Collapse' : 'Expand'} ${group.title} menu`}
+                >
                   <div className="flex items-center">
-                    <group.icon className="w-4 h-4 mr-3 text-gray-600 group-hover:text-gray-800" />
+                    <group.icon className="w-5 h-5 mr-3 text-muted-foreground group-hover:text-primary transition-colors" />
                     <span className="font-medium text-sm">{group.title}</span>
                   </div>
                   {openGroups.has(group.title) ? (
-                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                    <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform" />
                   ) : (
-                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform" />
                   )}
                 </button>
               </CollapsibleTrigger>
               
-              <CollapsibleContent>
-                <div className="ml-6 space-y-0.5 mb-2">
+              <CollapsibleContent className="data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
+                <div className="ml-6 space-y-1 mb-2">
                   {group.items.map((item) => (
                     <NavLink
                       key={item.name}
                       to={item.href}
                       className={({ isActive }) =>
                         cn(
-                          "flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200",
-                          isActive && "bg-blue-50 text-blue-700 font-medium"
+                          "flex items-center px-3 py-2.5 text-sm text-muted-foreground hover:text-primary hover:bg-accent rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                          isActive && "bg-primary/10 text-primary font-medium"
                         )
                       }
                     >
@@ -216,12 +220,12 @@ export const W3StyleSidebar = () => {
               to={item.href}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center px-3 py-2.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors duration-200",
-                  isActive && "bg-blue-50 text-blue-700 font-medium"
+                  "flex items-center px-3 py-3 text-sm text-foreground hover:text-primary hover:bg-accent rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+                  isActive && "bg-primary/10 text-primary font-medium"
                 )
               }
             >
-              <item.icon className="w-4 h-4 mr-3" />
+              <item.icon className="w-5 h-5 mr-3" />
               {item.name}
             </NavLink>
           ))}
@@ -229,16 +233,16 @@ export const W3StyleSidebar = () => {
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-200 bg-white flex-shrink-0">
+      <div className="p-4 border-t border-border bg-card flex-shrink-0">
         <div className="flex items-center">
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-medium">
+          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+            <span className="text-primary-foreground text-sm font-medium">
               {user?.name?.charAt(0).toUpperCase()}
             </span>
           </div>
-          <div className="ml-3">
-            <p className="text-sm font-medium text-gray-800">{user?.name}</p>
-            <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
+          <div className="ml-3 flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
+            <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
           </div>
         </div>
       </div>

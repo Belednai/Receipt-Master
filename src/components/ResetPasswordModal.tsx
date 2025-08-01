@@ -31,7 +31,6 @@ interface User {
   name: string;
   email: string;
   role: 'admin' | 'cashier';
-  status: 'active' | 'inactive';
   createdAt: string;
 }
 

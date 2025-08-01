@@ -18,7 +18,8 @@ import {
   Package,
   DollarSign,
   ShoppingCart,
-  Receipt
+  Receipt,
+  AlertCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -162,16 +163,16 @@ const CashierReceipt = () => {
 
   const prepareReceiptData = (): ReceiptData => {
     if (!companySettings) {
-      throw new Error("Company settings not loaded");
+      throw new Error("Company settings not configured. Please configure company settings in Settings first.");
     }
 
     return {
       id: generateReceiptId(),
       companyInfo: {
-        name: companySettings.name,
-        address: companySettings.address,
-        phone: companySettings.phone,
-        email: companySettings.email
+        name: companySettings.name || "Company Name Not Set",
+        address: companySettings.address || "Address Not Set",
+        phone: companySettings.phone || "Phone Not Set",
+        email: companySettings.email || "Email Not Set"
       },
       customerInfo: {
         name: customerInfo.name,
@@ -329,6 +330,25 @@ const CashierReceipt = () => {
             Generate a receipt using available products
           </p>
         </div>
+
+        {/* Company Settings Warning */}
+        {!companySettings && (
+          <div className="mb-6 animate-slide-up">
+            <Card className="border-orange-200 bg-orange-50">
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-3">
+                  <AlertCircle className="h-5 w-5 text-orange-600" />
+                  <div>
+                    <h3 className="font-semibold text-orange-800">Company Settings Not Configured</h3>
+                    <p className="text-orange-700 text-sm">
+                      Please configure your company details in Settings before creating receipts.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Products and Cart */}
